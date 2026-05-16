@@ -1,0 +1,21 @@
+.gitignore
+  s_d689ad7c783cb3::t_bd83909d9ee073 1-20
+.github/workflows/ci-cd.yml
+  s_d689ad7c783cb3::t_3881b25ae43594 1-142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "c86d100367fcc62614440bf5dd361a107f30984a",
+  "prompts": {},
+  "sessions": {
+    "s_d689ad7c783cb3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aeb44d58-d3bd-4b67-a455-18a309953f86",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "programanda03 <paganiamanda791@gmail.com>"
+    }
+  }
+}
