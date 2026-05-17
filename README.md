@@ -19,29 +19,27 @@ Após a análise do diagrama pela IA, o resultado precisa ser persistido de form
 
 ## Arquitetura Proposta
 
-```
-RabbitMQ: report.queue
-    │ consume
-    ▼
-┌──────────────────────────────────────────────────────────┐
-│               Report Service :8083                       │
-│                                                          │
-│  consumer/report_queue.go                                │
-│      │                                                   │
-│      ▼                                                   │
-│  usecase/create_report.go                                │
-│      ├──▶ repository/report_mongo.go  (MongoDB)          │
-│      └──▶ queue/rabbitmq.go                              │
-│               └─ publica em report.topic (fanout)        │
-│                     └─ upload-orchestrator → ANALISADO   │
-│                                                          │
-│  handler/report.go                                       │
-│      └─ GET /internal/reports/:reportId                  │
-│             ├──▶ uuid.Parse (valida formato)             │
-│             └──▶ repository/report_mongo.go              │
-└──────────────────────────────────────────────────────────┘
-         ▲
-    API Gateway
+```mermaid
+graph TD
+    RQ["RabbitMQ: report.queue"]
+    GW["API Gateway"]
+
+    subgraph RS["Report Service :8083"]
+        CON["consumer/report_queue.go"]
+        UC["usecase/create_report.go"]
+        MG[("repository/report_mongo.go\n(MongoDB)")]
+        Q["queue/rabbitmq.go"]
+        H["handler/report.go\nGET /internal/reports/:reportId\nuuid.Parse → report_mongo.go"]
+        CON --> UC
+        UC --> MG
+        UC --> Q
+    end
+
+    RT["report.topic (fanout)\n→ upload-orchestrator: ANALISADO"]
+
+    RQ -->|consume| CON
+    Q --> RT
+    GW --> H
 ```
 
 ### Camadas internas (Clean Architecture)
@@ -82,24 +80,35 @@ internal/
 
 ## Fluxo da Solução
 
-```
-Mensagem recebida de report.queue:
-  {process_id, analysis: {components, risks, recommendations}, raw_response}
-  │
-  ├─ 1. Gera report_id = uuid.New()
-  ├─ 2. MongoDB.InsertOne({_id: report_id, process_id, analysis, raw_response, created_at})
-  ├─ 3. Publica report.topic: {process_id, report_id, event: report_created}
-  │       └─ upload-orchestrator atualiza PostgreSQL → ANALISADO + report_id
-  └─ 4. Ack()
+```mermaid
+flowchart TD
+    MSG["Mensagem: report.queue\n{process_id, analysis, raw_response}"]
+    R1["Gera report_id = uuid.New()"]
+    R2["MongoDB.InsertOne\n{_id: report_id, process_id, analysis, raw_response, created_at}"]
+    OK{persistiu?}
+    R3["Publica report.topic\n{report_id, event: report_created}\n→ upload-orchestrator: ANALISADO + report_id"]
+    ACK["Ack()"]
+    ERR["Publica report.topic {event: report_failed}\nNack(false, false)"]
 
-Em caso de falha na persistência:
-  ├─ Publica report.topic: {process_id, event: report_failed, error}
-  └─ Nack(false, false)
+    MSG --> R1 --> R2 --> OK
+    OK -->|sim| R3 --> ACK
+    OK -->|não| ERR
 
-GET /internal/reports/:reportId
-  1. uuid.Parse(reportId) → 400 se formato inválido
-  2. MongoDB.FindOne({_id: reportId}) → 404 se não encontrado
-  3. Retorna {report_id, process_id, components, risks, recommendations, created_at}
+    subgraph GET["GET /internal/reports/:reportId"]
+        G1["uuid.Parse(reportId)"]
+        G2{válido?}
+        G3["400 Bad Request"]
+        G4["MongoDB.FindOne\n{_id: reportId}"]
+        G5{encontrado?}
+        G6["404 Not Found"]
+        G7["200 {report_id, process_id,\ncomponents, risks,\nrecommendations, created_at}"]
+        G1 --> G2
+        G2 -->|não| G3
+        G2 -->|sim| G4
+        G4 --> G5
+        G5 -->|não| G6
+        G5 -->|sim| G7
+    end
 ```
 
 ---
