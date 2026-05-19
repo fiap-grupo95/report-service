@@ -1,0 +1,27 @@
+Makefile
+  s_e1b5e3ea73cb95::t_ab427e98a58423 1-7
+.env.example
+  s_e1b5e3ea73cb95::t_12540a6a193760 6-9,11-13
+  s_e1b5e3ea73cb95::t_11f06808e3fe73 2
+  s_e1b5e3ea73cb95::t_ae8fa36be5cdd0 1,3-5,10,14-17
+docker-compose.dev.yml
+  s_e1b5e3ea73cb95::t_75ef1c02b32590 1-2,6,41-46,58-62
+  s_e1b5e3ea73cb95::t_da672b375b7ac4 5,7
+  s_e1b5e3ea73cb95::t_1daa9bcacd4eaa 3-4,8-40,47-57,63-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "247ee1f44cc4fc73beaa0ca5e28ed6ce178eef30",
+  "prompts": {},
+  "sessions": {
+    "s_e1b5e3ea73cb95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad7e3add-d625-4b2b-a07f-16fbf6b80e25",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "programanda03 <paganiamanda791@gmail.com>"
+    }
+  }
+}
