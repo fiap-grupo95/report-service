@@ -1,0 +1,21 @@
+internal/handler/report.go
+  s_017d8af4510f35::t_a6cc6cf7d0b7e6 24,28-32,34-37,39-44
+internal/consumer/report_queue.go
+  s_017d8af4510f35::t_a3e7ef0863f812 55-58,65-67,75-79,85,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.12",
+  "base_commit_sha": "a5151130cf46f7018fe0263ca20258f6c6678da3",
+  "prompts": {},
+  "sessions": {
+    "s_017d8af4510f35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d66c0fd1-4d70-4b5e-a7af-72838c054fc3",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "programanda03 <paganiamanda791@gmail.com>"
+    }
+  }
+}
