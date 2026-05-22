@@ -1,0 +1,19 @@
+main.go
+  s_017d8af4510f35::t_57d52ce0ae2016 39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.12",
+  "base_commit_sha": "9ec2cc1ff9903f21e8ef6374e91e27b6a7303b2f",
+  "prompts": {},
+  "sessions": {
+    "s_017d8af4510f35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d66c0fd1-4d70-4b5e-a7af-72838c054fc3",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "programanda03 <paganiamanda791@gmail.com>"
+    }
+  }
+}
