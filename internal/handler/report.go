@@ -21,20 +21,28 @@ func NewReportHandler(uc *usecase.GetReportUseCase) *ReportHandler {
 // GET /internal/reports/:reportId
 func (h *ReportHandler) GetReport(c *gin.Context) {
 	reportID := c.Param("reportId")
+	log := logging.LoggerWithContext(c.Request.Context())
 
 	r, err := h.uc.Execute(c.Request.Context(), reportID)
 	if err != nil {
-		if errors.Is(err, domain.ErrInvalidID) {
+		switch {
+		case errors.Is(err, domain.ErrInvalidID):
+			log.Warn().
+				Str("report_id", reportID).
+				Msg("get report rejected: invalid report id format")
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid report id"})
-			return
-		}
-		if errors.Is(err, domain.ErrReportNotFound) {
+		case errors.Is(err, domain.ErrReportNotFound):
+			log.Warn().
+				Str("report_id", reportID).
+				Msg("get report: report not found")
 			c.JSON(http.StatusNotFound, gin.H{"error": "report not found"})
-			return
+		default:
+			log.Error().
+				Err(err).
+				Str("report_id", reportID).
+				Msg("get report failed")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		}
-		logging.LoggerWithContext(c.Request.Context()).Error().
-			Str("report_id", reportID).Err(err).Msg("get report failed")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
 

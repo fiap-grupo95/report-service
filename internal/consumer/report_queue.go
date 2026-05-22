@@ -52,14 +52,19 @@ func (c *ReportQueueConsumer) handle(d amqp.Delivery) {
 
 	var msg reportMessage
 	if err := json.Unmarshal(d.Body, &msg); err != nil {
-		logging.Logger().Error().Err(err).Msg("invalid report queue message")
+		logging.Logger().Error().
+			Err(err).
+			Int("body_size", len(d.Body)).
+			Msg("invalid report queue message")
 		txn.NoticeError(err)
 		d.Nack(false, false)
 		return
 	}
 
 	if msg.ProcessID == "" {
-		logging.Logger().Error().Msg("report message missing process_id")
+		logging.Logger().Error().
+			Int("body_size", len(d.Body)).
+			Msg("report message missing process_id")
 		d.Nack(false, false)
 		return
 	}
@@ -67,18 +72,22 @@ func (c *ReportQueueConsumer) handle(d amqp.Delivery) {
 	ctx := newrelic.NewContext(context.Background(), txn)
 	txn.AddAttribute("process_id", msg.ProcessID)
 
-	_, err := c.uc.Execute(ctx, usecase.CreateReportInput{
+	log := logging.LoggerWithContext(ctx).With().
+		Str("process_id", msg.ProcessID).
+		Logger()
+
+	out, err := c.uc.Execute(ctx, usecase.CreateReportInput{
 		ProcessID:   msg.ProcessID,
 		Analysis:    msg.Analysis,
 		RawResponse: msg.RawResponse,
 	})
 	if err != nil {
-		logging.LoggerWithContext(ctx).Error().
-			Str("process_id", msg.ProcessID).Err(err).Msg("create report failed")
+		log.Error().Err(err).Msg("create report failed")
 		txn.NoticeError(err)
 		d.Nack(false, false)
 		return
 	}
 
+	log.Info().Str("report_id", out.ReportID).Msg("report created successfully")
 	d.Ack(false)
 }
