@@ -13,7 +13,6 @@ import (
 	"github.com/fiap/secure-systems/report-service/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
 type fakeReportRepository struct {
@@ -34,7 +33,7 @@ func (f *fakeReportRepository) FindByID(ctx context.Context, id string) (*domain
 func setupRouter(repo usecase.ReportRepository) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	h := NewReportHandler(usecase.NewGetReportUseCase(repo), zap.NewNop())
+	h := NewReportHandler(usecase.NewGetReportUseCase(repo))
 	r.GET("/internal/reports/:reportId", h.GetReport)
 	return r
 }

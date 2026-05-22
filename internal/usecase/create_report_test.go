@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/fiap/secure-systems/report-service/internal/domain"
-	"go.uber.org/zap"
 )
 
 type fakeReportRepository struct {
@@ -61,7 +60,7 @@ func TestCreateReportExecute_SavesReportAndPublishesCreatedEvent(t *testing.T) {
 		},
 	}
 
-	uc := NewCreateReportUseCase(repo, publisher, "report.topic", zap.NewNop())
+	uc := NewCreateReportUseCase(repo, publisher, "report.topic")
 	out, err := uc.Execute(context.Background(), CreateReportInput{
 		ProcessID: "process-1",
 		Analysis: domain.Analysis{
@@ -118,7 +117,7 @@ func TestCreateReportExecute_SaveErrorPublishesFailedEvent(t *testing.T) {
 		},
 	}
 
-	uc := NewCreateReportUseCase(repo, publisher, "report.topic", zap.NewNop())
+	uc := NewCreateReportUseCase(repo, publisher, "report.topic")
 	out, err := uc.Execute(context.Background(), CreateReportInput{ProcessID: "process-1"})
 
 	if err == nil {
@@ -142,7 +141,6 @@ func TestCreateReportExecute_PublishErrorDoesNotFailSuccessfulSave(t *testing.T)
 			return errors.New("rabbit unavailable")
 		}},
 		"report.topic",
-		zap.NewNop(),
 	)
 
 	out, err := uc.Execute(context.Background(), CreateReportInput{ProcessID: "process-1"})
