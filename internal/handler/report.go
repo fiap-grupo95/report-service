@@ -5,18 +5,17 @@ import (
 	"net/http"
 
 	"github.com/fiap/secure-systems/report-service/internal/domain"
+	"github.com/fiap/secure-systems/report-service/internal/logging"
 	"github.com/fiap/secure-systems/report-service/internal/usecase"
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 type ReportHandler struct {
-	uc  *usecase.GetReportUseCase
-	log *zap.Logger
+	uc *usecase.GetReportUseCase
 }
 
-func NewReportHandler(uc *usecase.GetReportUseCase, log *zap.Logger) *ReportHandler {
-	return &ReportHandler{uc: uc, log: log}
+func NewReportHandler(uc *usecase.GetReportUseCase) *ReportHandler {
+	return &ReportHandler{uc: uc}
 }
 
 // GET /internal/reports/:reportId
@@ -33,7 +32,8 @@ func (h *ReportHandler) GetReport(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "report not found"})
 			return
 		}
-		h.log.Error("get report failed", zap.String("reportId", reportID), zap.Error(err))
+		logging.LoggerWithContext(c.Request.Context()).Error().
+			Str("report_id", reportID).Err(err).Msg("get report failed")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}

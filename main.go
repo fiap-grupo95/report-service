@@ -11,6 +11,7 @@ import (
 	"github.com/fiap/secure-systems/report-service/internal/config"
 	"github.com/fiap/secure-systems/report-service/internal/consumer"
 	"github.com/fiap/secure-systems/report-service/internal/handler"
+	"github.com/fiap/secure-systems/report-service/internal/logging"
 	"github.com/fiap/secure-systems/report-service/internal/queue"
 	"github.com/fiap/secure-systems/report-service/internal/repository"
 	"github.com/fiap/secure-systems/report-service/internal/usecase"
@@ -19,24 +20,27 @@ import (
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.uber.org/zap"
 )
 
 func main() {
-	log, _ := zap.NewProduction()
-	defer log.Sync()
-
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("config load failed", zap.Error(err))
+		panic("config load failed: " + err.Error())
 	}
 
 	// ─── New Relic ────────────────────────────────────────────────────────────
-	nrApp, err := newrelic.NewApplication(newrelic.ConfigFromEnvironment())
+	nrApp, err := newrelic.NewApplication(
+		newrelic.ConfigFromEnvironment(),
+		newrelic.ConfigDistributedTracerEnabled(true),
+		newrelic.ConfigAppLogForwardingEnabled(true),
+	)
 	if err != nil {
-		log.Warn("new relic not configured", zap.Error(err))
 		nrApp, _ = newrelic.NewApplication(newrelic.ConfigEnabled(false))
 	}
+
+	// ─── Logging (deve ser inicializado após o New Relic) ─────────────────────
+	logging.Init(nrApp)
+	log := logging.Logger()
 
 	// ─── MongoDB ──────────────────────────────────────────────────────────────
 	mongoCtx, mongoCancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -44,47 +48,47 @@ func main() {
 
 	mongoClient, err := mongo.Connect(mongoCtx, options.Client().ApplyURI(cfg.MongoURI))
 	if err != nil {
-		log.Fatal("mongo connect failed", zap.Error(err))
+		log.Fatal().Err(err).Msg("mongo connect failed")
 	}
 	if err := mongoClient.Ping(mongoCtx, nil); err != nil {
-		log.Fatal("mongo ping failed", zap.Error(err))
+		log.Fatal().Err(err).Msg("mongo ping failed")
 	}
 	defer mongoClient.Disconnect(context.Background())
 
 	db := mongoClient.Database(cfg.MongoDB)
 	reportRepo := repository.NewReportRepository(db)
 	if err := reportRepo.EnsureIndexes(context.Background()); err != nil {
-		log.Warn("mongo index creation failed", zap.Error(err))
+		log.Warn().Err(err).Msg("mongo index creation failed")
 	}
 
 	// ─── RabbitMQ ─────────────────────────────────────────────────────────────
 	rmq, err := queue.NewRabbitMQ(cfg.RabbitMQURL)
 	if err != nil {
-		log.Fatal("rabbitmq connect failed", zap.Error(err))
+		log.Fatal().Err(err).Msg("rabbitmq connect failed")
 	}
 	defer rmq.Close()
 
 	if err := rmq.DeclareQueue(cfg.ReportQueue); err != nil {
-		log.Fatal("declare report queue failed", zap.Error(err))
+		log.Fatal().Err(err).Msg("declare report queue failed")
 	}
 	if err := rmq.DeclareExchange(cfg.ReportTopic); err != nil {
-		log.Fatal("declare report topic failed", zap.Error(err))
+		log.Fatal().Err(err).Msg("declare report topic failed")
 	}
 
 	deliveries, err := rmq.Consume(cfg.ReportQueue)
 	if err != nil {
-		log.Fatal("consume report queue failed", zap.Error(err))
+		log.Fatal().Err(err).Msg("consume report queue failed")
 	}
 
 	// ─── Casos de Uso ─────────────────────────────────────────────────────────
-	createUC := usecase.NewCreateReportUseCase(reportRepo, rmq, cfg.ReportTopic, log)
+	createUC := usecase.NewCreateReportUseCase(reportRepo, rmq, cfg.ReportTopic)
 	getUC := usecase.NewGetReportUseCase(reportRepo)
 
 	// ─── Consumer ─────────────────────────────────────────────────────────────
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	go consumer.NewReportQueueConsumer(createUC, nrApp, log).Run(ctx, deliveries)
+	go consumer.NewReportQueueConsumer(createUC, nrApp).Run(ctx, deliveries)
 
 	// ─── HTTP (Gin) ───────────────────────────────────────────────────────────
 	gin.SetMode(gin.ReleaseMode)
@@ -96,7 +100,7 @@ func main() {
 
 	internal := r.Group("/internal")
 	{
-		reportH := handler.NewReportHandler(getUC, log)
+		reportH := handler.NewReportHandler(getUC)
 		internal.GET("/reports/:reportId", reportH.GetReport)
 	}
 
@@ -109,9 +113,9 @@ func main() {
 	}
 
 	go func() {
-		log.Info("report-service started", zap.String("port", cfg.Port))
+		log.Info().Str("port", cfg.Port).Msg("report-service started")
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatal("server error", zap.Error(err))
+			log.Fatal().Err(err).Msg("server error")
 		}
 	}()
 
@@ -120,7 +124,7 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Error("shutdown error", zap.Error(err))
+		log.Error().Err(err).Msg("shutdown error")
 	}
-	log.Info("report-service stopped")
+	log.Info().Msg("report-service stopped")
 }

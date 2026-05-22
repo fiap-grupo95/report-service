@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/fiap/secure-systems/report-service/internal/domain"
+	"github.com/fiap/secure-systems/report-service/internal/logging"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
 type CreateReportInput struct {
@@ -33,19 +33,19 @@ type CreateReportUseCase struct {
 	repo        ReportRepository
 	publisher   EventPublisher
 	reportTopic string
-	log         *zap.Logger
 }
 
 func NewCreateReportUseCase(
 	repo ReportRepository,
 	publisher EventPublisher,
 	reportTopic string,
-	log *zap.Logger,
 ) *CreateReportUseCase {
-	return &CreateReportUseCase{repo: repo, publisher: publisher, reportTopic: reportTopic, log: log}
+	return &CreateReportUseCase{repo: repo, publisher: publisher, reportTopic: reportTopic}
 }
 
 func (uc *CreateReportUseCase) Execute(ctx context.Context, in CreateReportInput) (*CreateReportOutput, error) {
+	defer logging.StartSegment(ctx, "CreateReport.MongoSave")()
+
 	report := &domain.Report{
 		ID:          uuid.New().String(),
 		ProcessID:   in.ProcessID,
@@ -60,7 +60,8 @@ func (uc *CreateReportUseCase) Execute(ctx context.Context, in CreateReportInput
 	}
 
 	uc.publishEvent(ctx, in.ProcessID, report.ID, "report_created", "")
-	uc.log.Info("report created", zap.String("reportId", report.ID), zap.String("processId", in.ProcessID))
+	logging.LoggerWithContext(ctx).Info().
+		Str("report_id", report.ID).Str("process_id", in.ProcessID).Msg("report created")
 
 	return &CreateReportOutput{ReportID: report.ID, CreatedAt: report.CreatedAt}, nil
 }
@@ -73,10 +74,8 @@ func (uc *CreateReportUseCase) publishEvent(ctx context.Context, processID, repo
 		ErrorMsg:  errMsg,
 	})
 	if err := uc.publisher.PublishToExchange(ctx, uc.reportTopic, payload); err != nil {
-		uc.log.Error("failed to publish report event",
-			zap.String("event", event),
-			zap.String("processId", processID),
-			zap.Error(err),
-		)
+		logging.LoggerWithContext(ctx).Error().
+			Str("event", event).Str("process_id", processID).Err(err).
+			Msg("failed to publish report event")
 	}
 }
