@@ -1,0 +1,29 @@
+go.mod
+  s_017d8af4510f35::t_c1789ab446edcc 8-9,31,36-37,39
+internal/logging/logger.go
+  s_017d8af4510f35::t_669681569d9b96 1-44
+internal/usecase/create_report.go
+  s_017d8af4510f35::t_7435379307113c 10,43,47-48,63-64,77-79
+internal/consumer/report_queue.go
+  s_017d8af4510f35::t_49282b1f742077 8,29,33,37,41,55,62,68,76-77
+main.go
+  s_017d8af4510f35::t_00179bd5fe9739 14,28,32-36,41-44,51,54,61,67,72,75,80,84,91,103,116,118,127,129
+internal/handler/report.go
+  s_017d8af4510f35::t_88266f9e104a32 8,14,17-18,35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.12",
+  "base_commit_sha": "2d816195a1a5c796acc26afcfee02096c21c52c2",
+  "prompts": {},
+  "sessions": {
+    "s_017d8af4510f35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d66c0fd1-4d70-4b5e-a7af-72838c054fc3",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "programanda03 <paganiamanda791@gmail.com>"
+    }
+  }
+}
